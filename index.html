@@ -1,0 +1,1356 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0d12">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Karty">
+<title>Card Maker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;700&family=Montserrat:wght@400;700&family=Pacifico&family=Playfair+Display:wght@400;700&family=Poppins:wght@400;700&family=Roboto+Mono:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.6/JsBarcode.all.min.js"></script>
+<style>
+:root{
+  --bg:#0b0d12; --panel:#12151c; --panel2:#191d26; --panel3:#222733; --line:#272c38;
+  --text:#e9ebf1; --muted:#8a92a6; --accent:#7c5cff; --accent2:#a28cff; --danger:#ff5d6c; --ok:#3ddc97;
+  --r:14px; --tab:64px;
+  --sat:env(safe-area-inset-top,0px); --sab:env(safe-area-inset-bottom,0px);
+  color-scheme:dark;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text)}
+body{font:15px/1.4 Inter,-apple-system,system-ui,sans-serif;min-height:100dvh;touch-action:manipulation;-webkit-text-size-adjust:100%}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+svg{display:block}
+
+/* ---------- top: header + stage ---------- */
+.top{position:sticky;top:0;z-index:20;background:var(--bg);padding-top:var(--sat);border-bottom:1px solid var(--line)}
+header{display:flex;align-items:center;gap:8px;padding:8px 14px}
+.brand{font-weight:700;letter-spacing:.2px;display:flex;align-items:center;gap:8px;min-width:0}
+.brand .dot{width:22px;height:14px;border-radius:4px;background:linear-gradient(135deg,var(--accent),#22d3ee);flex:none}
+.brand span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.spacer{flex:1}
+.ibtn{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--panel2);display:grid;place-items:center;flex:none}
+.ibtn:disabled{opacity:.35}
+.btn{min-height:44px;padding:0 16px;border-radius:12px;border:1px solid var(--line);background:var(--panel2);display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:600}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.danger{color:var(--danger)}
+.btn.block{width:100%}
+.btn:active,.ibtn:active{transform:scale(.97)}
+
+.stage{padding:10px 18px 14px;display:flex;justify-content:center}
+.card{position:relative;width:min(100%, calc((100dvh - 430px) * 1.585), 760px);min-width:min(100%,280px);aspect-ratio:856/540;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.card canvas{position:absolute;inset:0;width:100%;height:100%;border-radius:3.7%/5.9%;box-shadow:0 10px 40px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.06)}
+.card.drop canvas{outline:3px dashed var(--accent2);outline-offset:4px}
+.sel{position:absolute;border:1.5px solid var(--accent2);border-radius:3px;pointer-events:none;box-shadow:0 0 0 1px rgba(0,0,0,.4)}
+.sel[hidden]{display:none}
+.h{position:absolute;width:44px;height:44px;pointer-events:auto;display:grid;place-items:center}
+.h i{display:block;border-radius:50%;background:#fff;border:2px solid var(--accent);box-shadow:0 1px 4px rgba(0,0,0,.5)}
+.h-resize{right:-22px;bottom:-22px;cursor:nwse-resize}
+.h-resize i{width:18px;height:18px}
+.h-del{right:-22px;top:-22px}
+.h-del i{width:24px;height:24px;background:var(--danger);border-color:#fff;display:grid;place-items:center;color:#fff;font:700 15px/1 system-ui;font-style:normal}
+
+/* ---------- layout ---------- */
+.panel{padding:14px 14px calc(var(--tab) + var(--sab) + 24px)}
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;display:grid;grid-template-columns:repeat(5,1fr);background:rgba(18,21,28,.94);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--line);padding-bottom:var(--sab)}
+.tabs button{height:var(--tab);border:0;background:none;color:var(--muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:11px;font-weight:600}
+.tabs button.on{color:var(--text)}
+.tabs button.on svg{color:var(--accent2)}
+.view{display:none}
+.view.on{display:block}
+
+@media (min-width:960px){
+  body{height:100dvh;overflow:hidden}
+  .wrap{display:grid;grid-template-columns:1fr 410px;height:100dvh}
+  .top{position:static;border-bottom:0;display:flex;flex-direction:column;height:100dvh}
+  header{padding:12px 20px;border-bottom:1px solid var(--line)}
+  .stage{flex:1;align-items:center;padding:30px}
+  .card{width:min(100%, calc((100dvh - 160px) * 1.585), 900px)}
+  .side{border-left:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column;min-height:0}
+  .tabs{position:static;background:none;border-top:0;border-bottom:1px solid var(--line);padding:0;backdrop-filter:none;-webkit-backdrop-filter:none}
+  .panel{overflow:auto;flex:1;padding:16px}
+}
+
+/* ---------- forms ---------- */
+.sec{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:12px}
+@media (min-width:960px){.sec{background:var(--panel2)}}
+.sec h3{margin:0 0 12px;font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.fld{display:block;margin-bottom:12px}
+.fld:last-child{margin-bottom:0}
+.fld>span{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600}
+input[type=text],input[type=search],textarea,select{width:100%;min-height:44px;border-radius:10px;border:1px solid var(--line);background:var(--bg);padding:10px 12px;font-size:16px;outline:none}
+textarea{resize:vertical;min-height:64px}
+input:focus,textarea:focus,select:focus{border-color:var(--accent)}
+select{appearance:none;-webkit-appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);background-position:calc(100% - 18px) 50%,calc(100% - 13px) 50%;background-size:5px 5px;background-repeat:no-repeat;padding-right:32px}
+.seg{display:flex;gap:4px;background:var(--bg);border:1px solid var(--line);border-radius:11px;padding:3px}
+.seg button{flex:1;min-height:38px;border:0;border-radius:8px;background:none;color:var(--muted);font-weight:600;font-size:14px;padding:0 6px}
+.seg button.on{background:var(--panel3);color:var(--text)}
+.row{display:flex;gap:8px;align-items:center}
+.row>*{flex:1}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.colors{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.sw{width:34px;height:34px;border-radius:50%;border:2px solid var(--line);background:var(--c);padding:0}
+.sw.on{border-color:#fff;box-shadow:0 0 0 2px var(--accent)}
+input[type=color]{width:44px;height:38px;border:1px solid var(--line);border-radius:10px;background:var(--bg);padding:3px}
+input[type=color]::-webkit-color-swatch-wrapper{padding:0}
+input[type=color]::-webkit-color-swatch{border:0;border-radius:7px}
+input[type=range]{width:100%;height:32px;accent-color:var(--accent);margin:0}
+.rng{display:flex;align-items:center;gap:10px}
+.rng output{min-width:42px;text-align:right;font-variant-numeric:tabular-nums;color:var(--muted);font-size:13px}
+.switch{display:flex;align-items:center;justify-content:space-between;min-height:44px;gap:12px;margin-bottom:6px}
+.switch input{appearance:none;-webkit-appearance:none;width:50px;height:30px;border-radius:30px;background:var(--panel3);position:relative;flex:none;transition:background .15s;margin:0}
+.switch input::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:transform .15s}
+.switch input:checked{background:var(--accent)}
+.switch input:checked::after{transform:translateX(20px)}
+.hint{font-size:12.5px;color:var(--muted);margin:6px 0 0}
+.err{font-size:12.5px;color:var(--danger);margin:6px 0 0}
+.err:empty{display:none}
+.drop{border:1.5px dashed var(--line);border-radius:12px;padding:18px;text-align:center;color:var(--muted);display:block;cursor:pointer}
+.drop.over{border-color:var(--accent);color:var(--text)}
+.drop b{color:var(--text)}
+.file{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+
+.presets{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.preset{border:1px solid var(--line);background:var(--bg);border-radius:12px;padding:6px;text-align:left}
+.preset canvas{width:100%;aspect-ratio:856/540;display:block;border-radius:6px}
+.preset div{font-size:12.5px;font-weight:600;padding:6px 2px 2px}
+.preset.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+
+.adds{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.add{min-height:84px;border-radius:14px;border:1px solid var(--line);background:var(--panel2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;font-weight:600}
+.add svg{color:var(--accent2)}
+
+.layers{display:flex;flex-direction:column;gap:6px}
+.layer{display:flex;align-items:center;gap:10px;min-height:44px;padding:0 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);text-align:left;width:100%}
+.layer.on{border-color:var(--accent)}
+.layer em{font-style:normal;color:var(--muted);font-size:12px;margin-left:auto;flex:none}
+.layer span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.empty{color:var(--muted);text-align:center;padding:16px 8px}
+
+.projects{display:flex;flex-direction:column;gap:10px}
+.proj{display:flex;gap:12px;align-items:center;padding:8px;border-radius:12px;border:1px solid var(--line);background:var(--bg)}
+.proj img{width:92px;aspect-ratio:856/540;border-radius:6px;object-fit:cover;flex:none;background:var(--panel3)}
+.proj .meta{flex:1;min-width:0}
+.proj .meta b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.proj .meta small{color:var(--muted)}
+.proj .acts{display:flex;flex-direction:column;gap:6px}
+.proj .acts .btn{min-height:38px;padding:0 12px;font-size:13px}
+.proj.cur{border-color:var(--accent)}
+
+.modal{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center}
+.modal[hidden]{display:none}
+.sheet{background:var(--panel);border:1px solid var(--line);border-radius:20px 20px 0 0;width:100%;max-width:520px;padding:18px 16px calc(18px + var(--sab));max-height:92dvh;overflow:auto}
+@media (min-width:600px){.modal{align-items:center}.sheet{border-radius:20px}}
+.sheet h3{margin:0 0 12px}
+.sheet img{width:100%;border-radius:10px;display:block;margin-bottom:12px;background:repeating-conic-gradient(#222 0 25%,#2a2a2a 0 50%) 0 0/16px 16px;min-height:80px}
+.stack{display:flex;flex-direction:column;gap:8px}
+.toast{position:fixed;left:50%;bottom:calc(var(--tab) + var(--sab) + 16px);transform:translateX(-50%) translateY(20px);background:var(--panel3);border:1px solid var(--line);padding:10px 16px;border-radius:12px;opacity:0;transition:.2s;z-index:60;pointer-events:none;max-width:calc(100% - 32px);text-align:center}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+@media (min-width:960px){.toast{bottom:24px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <header>
+      <div class="brand"><div class="dot"></div><span id="projTitle">Card Maker</span></div>
+      <div class="spacer"></div>
+      <button class="ibtn" id="undoBtn" title="Cofnij" aria-label="Cofnij"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button>
+      <button class="ibtn" id="redoBtn" title="Ponów" aria-label="Ponów"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg></button>
+      <button class="btn primary" id="exportBtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>PNG</button>
+    </header>
+    <div class="stage">
+      <div class="card" id="card">
+        <canvas id="cv"></canvas>
+        <div class="sel" id="sel" hidden>
+          <div class="h h-del" data-h="del"><i>×</i></div>
+          <div class="h h-resize" data-h="resize"><i></i></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="side">
+    <nav class="tabs" id="tabs">
+      <button data-tab="tpl" class="on"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Szablony</button>
+      <button data-tab="bg"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/></svg>Tło</button>
+      <button data-tab="add"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>Dodaj</button>
+      <button data-tab="el"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>Element</button>
+      <button data-tab="proj"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Projekty</button>
+    </nav>
+
+    <main class="panel">
+      <!-- SZABLONY -->
+      <section class="view on" data-view="tpl">
+        <div class="sec" id="quick">
+          <h3>Dane karty</h3>
+          <label class="fld"><span>Nazwa (np. sklep, imię)</span><input type="text" data-q="name" placeholder="Kawiarnia Ziarno" autocomplete="off"></label>
+          <label class="fld"><span>Podpis / numer karty</span><input type="text" data-q="sub" placeholder="Karta stałego klienta" autocomplete="off"></label>
+          <label class="fld"><span>Zawartość kodu</span><input type="text" data-q="code" placeholder="numer z karty lub link" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
+          <div class="fld"><span>Rodzaj kodu</span>
+            <div class="seg" id="qFormat"><button data-f="QR">QR</button><button data-f="CODE128">Code128</button><button data-f="EAN13">EAN-13</button></div>
+            <p class="err" id="qErr"></p>
+          </div>
+          <div class="grid2">
+            <label class="btn"><input type="file" accept="image/*" class="file" id="qLogo">Wgraj logo</label>
+            <label class="btn"><input type="file" accept="image/*" class="file" id="qBg">Wgraj tło</label>
+          </div>
+        </div>
+        <div class="sec">
+          <h3>Układ</h3>
+          <div class="presets" id="presets"></div>
+          <p class="hint">Wybierz układ, wpisz dane powyżej. Każdy element możesz potem przesunąć palcem.</p>
+        </div>
+      </section>
+
+      <!-- TŁO -->
+      <section class="view" data-view="bg">
+        <div class="sec">
+          <h3>Zdjęcie tła</h3>
+          <label class="drop" id="bgDrop"><input type="file" accept="image/*" class="file" id="bgFile"><b>Zrób zdjęcie / wybierz z galerii</b><br>lub upuść plik tutaj (albo na kartę)</label>
+          <div id="bgImgCtl"></div>
+        </div>
+        <div class="sec" id="bgForm"></div>
+      </section>
+
+      <!-- DODAJ -->
+      <section class="view" data-view="add">
+        <div class="sec">
+          <h3>Dodaj element</h3>
+          <div class="adds">
+            <button class="add" data-add="text"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 6V4h14v2M12 4v16M9 20h6"/></svg>Tekst</button>
+            <button class="add" data-add="qr"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 17h3v3"/></svg>Kod QR</button>
+            <button class="add" data-add="barcode"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5v14M7 5v14M11 5v14M13 5v14M17 5v14M20 5v14"/></svg>Kod kreskowy</button>
+            <label class="add"><input type="file" accept="image/*" class="file" id="addImg"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/></svg>Obrazek / logo</label>
+            <button class="add" data-add="shape"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="10" rx="2"/></svg>Prostokąt / pasek</button>
+            <button class="add" data-add="clear"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>Wyczyść elementy</button>
+          </div>
+          <p class="hint">Tryb w pełni własny: dodaj ile chcesz elementów, przeciągaj je po karcie, rozciągaj kropką w rogu albo dwoma palcami.</p>
+        </div>
+      </section>
+
+      <!-- ELEMENT -->
+      <section class="view" data-view="el">
+        <div id="props"></div>
+        <div class="sec"><h3>Warstwy</h3><div class="layers" id="layers"></div></div>
+      </section>
+
+      <!-- PROJEKTY -->
+      <section class="view" data-view="proj">
+        <div class="sec">
+          <h3>Bieżący projekt</h3>
+          <label class="fld"><span>Nazwa projektu</span><input type="text" id="projName" autocomplete="off"></label>
+          <div class="grid2">
+            <button class="btn primary" id="saveBtn">Zapisz</button>
+            <button class="btn" id="saveNewBtn">Zapisz jako nowy</button>
+          </div>
+          <div style="height:8px"></div>
+          <button class="btn block" id="newBtn">Nowy pusty projekt</button>
+        </div>
+        <div class="sec">
+          <h3>Zapisane karty</h3>
+          <div class="projects" id="projList"></div>
+        </div>
+        <div class="sec">
+          <h3>Kopia zapasowa</h3>
+          <div class="grid2">
+            <button class="btn" id="backupBtn">Eksport .json</button>
+            <label class="btn"><input type="file" accept=".json,application/json" class="file" id="importFile">Import .json</label>
+          </div>
+          <p class="hint">Safari potrafi wyczyścić dane strony, jeśli długo jej nie otwierasz. Zrób kopię wszystkich kart do pliku, jeśli Ci na nich zależy.</p>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<div class="modal" id="expModal" hidden>
+  <div class="sheet">
+    <h3>Eksport PNG</h3>
+    <img id="expImg" alt="Podgląd eksportu">
+    <div class="fld"><span>Rozdzielczość</span>
+      <div class="seg" id="dpiSeg"><button data-dpi="300">300 dpi</button><button data-dpi="600">600 dpi</button><button data-dpi="1000">1000 dpi</button></div>
+      <p class="hint" id="expInfo"></p>
+    </div>
+    <label class="switch"><span>Zaokrąglone rogi (przezroczyste)</span><input type="checkbox" id="expRound"></label>
+    <div class="stack">
+      <button class="btn primary block" id="shareBtn" hidden>Udostępnij / Zapisz w Zdjęciach</button>
+      <button class="btn block" id="dlBtn">Pobierz PNG</button>
+      <button class="btn block" id="expClose">Zamknij</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+'use strict';
+// Card units: 0.1 mm  →  85.6 x 54 mm
+const W = 856, H = 540, CR = 32;
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const uid = () => Math.random().toString(36).slice(2, 10);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+
+if (window.qrcode && qrcode.stringToBytesFuncs && qrcode.stringToBytesFuncs['UTF-8']) qrcode.stringToBytes = qrcode.stringToBytesFuncs['UTF-8'];
+
+const FONTS = [
+  {id:'Inter', label:'Inter', css:'"Inter", system-ui, sans-serif'},
+  {id:'Montserrat', label:'Montserrat', css:'"Montserrat", sans-serif'},
+  {id:'Poppins', label:'Poppins', css:'"Poppins", sans-serif'},
+  {id:'Playfair Display', label:'Playfair (szeryfowa)', css:'"Playfair Display", Georgia, serif'},
+  {id:'Bebas Neue', label:'Bebas Neue (nagłówki)', css:'"Bebas Neue", Impact, sans-serif'},
+  {id:'Roboto Mono', label:'Roboto Mono', css:'"Roboto Mono", ui-monospace, monospace'},
+  {id:'Pacifico', label:'Pacifico (odręczna)', css:'"Pacifico", cursive'},
+  {id:'system', label:'Systemowa', css:'-apple-system, system-ui, sans-serif'},
+];
+const fontCss = id => (FONTS.find(f => f.id === id) || FONTS[0]).css;
+const SWATCHES = ['#ffffff','#111111','#7c5cff','#22d3ee','#f43f5e','#f59e0b','#10b981'];
+const BAR_FORMATS = [['CODE128','Code128'],['EAN13','EAN-13'],['EAN8','EAN-8'],['UPC','UPC-A'],['CODE39','Code39'],['ITF14','ITF-14']];
+const TYPE_LABEL = {text:'Tekst', qr:'QR', barcode:'Kod kreskowy', image:'Obrazek', shape:'Prostokąt'};
+const ROLE_PH = {name:'Nazwa', sub:'Podpis / numer'};
+
+// ---------------- state ----------------
+const newState = () => ({
+  v: 1, name: 'Moja karta', rounded: true, preset: null,
+  bg: {color:'#1e1b4b', color2:'#7c3aed', gradient:true, angle:135, image:null, zoom:1, px:50, py:50, dim:0},
+  quick: {name:'', sub:'', code:'', format:'QR', logo:null},
+  els: []
+});
+let state = newState();
+let assets = {};           // id -> dataURL
+const imgCache = {};       // id -> HTMLImageElement
+let sel = null;            // selected element id
+let projectId = null;
+let tab = 'tpl';
+
+const getEl = id => state.els.find(e => e.id === id);
+const selEl = () => sel ? getEl(sel) : null;
+
+function addAsset(dataURL) { const id = 'a' + uid(); assets[id] = dataURL; return id; }
+function getImg(id, cb) {
+  if (!id || !assets[id]) return null;
+  let im = imgCache[id];
+  if (!im) {
+    im = imgCache[id] = new Image();
+    im._cbs = [];
+    im.onload = () => { im._ok = true; render(); im._cbs.forEach(f => f()); im._cbs = []; };
+    im.src = assets[id];
+  }
+  if (im._ok) return im;
+  if (cb) im._cbs.push(cb);
+  return null;
+}
+const imgReady = id => new Promise(res => { if (!id || !assets[id]) return res(); if (getImg(id, res)) res(); });
+
+// ---------------- drawing ----------------
+function rrect(ctx, x, y, w, h, r) {
+  r = Math.max(0, Math.min(r, w / 2, h / 2));
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function renderCard(ctx, s, opt = {}) {
+  const st = opt.st || state;
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+  const rounded = opt.rounded ?? st.rounded;
+  if (rounded) { rrect(ctx, 0, 0, W * s, H * s, CR * s); ctx.clip(); }
+  drawBg(ctx, st.bg, s);
+  for (const el of st.els) {
+    ctx.save();
+    ctx.globalAlpha = el.opacity ?? 1;
+    try { drawEl(ctx, el, s, opt); } catch (e) { console.warn(e); }
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
+function drawBg(ctx, bg, s) {
+  const w = W * s, h = H * s;
+  if (bg.gradient) {
+    const a = (bg.angle ?? 135) * Math.PI / 180, cx = w / 2, cy = h / 2;
+    const len = Math.abs(w * Math.sin(a)) / 2 + Math.abs(h * Math.cos(a)) / 2;
+    const dx = Math.sin(a) * len, dy = -Math.cos(a) * len;
+    const g = ctx.createLinearGradient(cx - dx, cy - dy, cx + dx, cy + dy);
+    g.addColorStop(0, bg.color); g.addColorStop(1, bg.color2);
+    ctx.fillStyle = g;
+  } else ctx.fillStyle = bg.color;
+  ctx.fillRect(0, 0, w, h);
+  const im = getImg(bg.image);
+  if (im) {
+    const iw = im.naturalWidth, ih = im.naturalHeight;
+    const k = Math.max(w / iw, h / ih) * (bg.zoom || 1);
+    const dw = iw * k, dh = ih * k;
+    ctx.drawImage(im, (w - dw) * (bg.px ?? 50) / 100, (h - dh) * (bg.py ?? 50) / 100, dw, dh);
+  }
+  if (bg.dim) { ctx.fillStyle = `rgba(0,0,0,${bg.dim})`; ctx.fillRect(0, 0, w, h); }
+}
+
+function placeholder(ctx, x, y, w, h, label, s) {
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = Math.max(1, 1.5 * s);
+  ctx.setLineDash([6 * s, 5 * s]);
+  ctx.fillStyle = 'rgba(0,0,0,.18)';
+  rrect(ctx, x, y, w, h, 8 * s); ctx.fill(); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = 'rgba(255,255,255,.75)';
+  ctx.font = `600 ${Math.min(h * .3, w / Math.max(label.length, 4) * 1.4, 34 * s)}px Inter, system-ui, sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(label, x + w / 2, y + h / 2);
+  ctx.restore();
+}
+
+function errBox(ctx, x, y, w, h, msg, s) {
+  ctx.save();
+  ctx.fillStyle = 'rgba(255,93,108,.18)'; ctx.strokeStyle = '#ff5d6c'; ctx.lineWidth = 2 * s;
+  rrect(ctx, x, y, w, h, 8 * s); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#ff8b96';
+  ctx.font = `600 ${Math.min(h * .2, w / Math.max(msg.length, 6) * 1.6, 28 * s)}px Inter, system-ui, sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(msg, x + w / 2, y + h / 2);
+  ctx.restore();
+}
+
+function drawEl(ctx, el, s, opt) {
+  const x = el.x * s, y = el.y * s, w = el.w * s, h = el.h * s;
+  switch (el.type) {
+    case 'shape':
+      ctx.fillStyle = el.fill || '#fff';
+      rrect(ctx, x, y, w, h, (el.radius || 0) * s); ctx.fill();
+      break;
+    case 'image': {
+      const im = getImg(el.asset);
+      if (!im) { if (opt.editor) placeholder(ctx, x, y, w, h, 'Obrazek', s); break; }
+      const iw = im.naturalWidth, ih = im.naturalHeight;
+      const k = el.fit === 'cover' ? Math.max(w / iw, h / ih) : Math.min(w / iw, h / ih);
+      const dw = iw * k, dh = ih * k;
+      ctx.save();
+      if (el.fit === 'cover') { rrect(ctx, x, y, w, h, (el.radius || 0) * s); ctx.clip(); }
+      else if (el.radius) { rrect(ctx, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh, el.radius * s); ctx.clip(); }
+      ctx.drawImage(im, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+      ctx.restore();
+      break;
+    }
+    case 'text': drawText(ctx, el, x, y, w, h, s, opt); break;
+    case 'qr': drawQR(ctx, el, x, y, w, h, s, opt); break;
+    case 'barcode': drawBarcode(ctx, el, x, y, w, h, s, opt); break;
+  }
+}
+
+const fontStr = (el, px) => `${el.italic ? 'italic ' : ''}${el.bold ? 700 : 400} ${px}px ${fontCss(el.font)}`;
+const pendingFonts = new Set();
+function ensureFont(el) {
+  if (!document.fonts || el.font === 'system') return;
+  const f = fontStr(el, 40);
+  if (pendingFonts.has(f)) return;
+  pendingFonts.add(f);
+  document.fonts.load(f).then(() => render()).catch(() => {});
+}
+
+function drawText(ctx, el, x, y, w, h, s, opt) {
+  let text = el.text || '';
+  let ghost = false;
+  if (!text.trim()) {
+    if (!opt.editor) return;
+    text = ROLE_PH[el.role] || 'Tekst'; ghost = true;
+  }
+  ensureFont(el);
+  const lines = text.split('\n');
+  ctx.font = fontStr(el, 100);
+  const maxW = Math.max(1, ...lines.map(l => ctx.measureText(l).width));
+  const LH = 1.18;
+  const size = Math.max(1, Math.min(w * .98 / maxW * 100, h / (lines.length * LH)));
+  ctx.font = fontStr(el, size);
+  ctx.fillStyle = el.color || '#fff';
+  if (ghost) ctx.globalAlpha *= .35;
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = el.align || 'center';
+  const tx = el.align === 'left' ? x : el.align === 'right' ? x + w : x + w / 2;
+  if (el.shadow) { ctx.shadowColor = 'rgba(0,0,0,.6)'; ctx.shadowBlur = size * .25; ctx.shadowOffsetY = size * .05; }
+  const total = lines.length * size * LH;
+  let ly = y + h / 2 - total / 2 + size * LH / 2;
+  for (const l of lines) { ctx.fillText(l, tx, ly); ly += size * LH; }
+}
+
+const qrCache = new Map();
+function qrMatrix(value, ecc) {
+  const key = ecc + '|' + value;
+  if (qrCache.has(key)) return qrCache.get(key);
+  let res;
+  try {
+    const q = qrcode(0, ecc || 'M');
+    q.addData(value, 'Byte'); q.make();
+    const n = q.getModuleCount(), m = [];
+    for (let r = 0; r < n; r++) { const row = []; for (let c = 0; c < n; c++) row.push(q.isDark(r, c)); m.push(row); }
+    res = {n, m};
+  } catch (e) { res = {error: 'Za dużo danych na QR'}; }
+  if (qrCache.size > 50) qrCache.clear();
+  qrCache.set(key, res);
+  return res;
+}
+
+function drawQR(ctx, el, x, y, w, h, s, opt) {
+  const size = Math.min(w, h), ox = x + (w - size) / 2, oy = y + (h - size) / 2;
+  if (!el.value) { if (opt.editor) placeholder(ctx, ox, oy, size, size, 'QR', s); return; }
+  const mx = qrMatrix(el.value, el.ecc);
+  if (mx.error) { errBox(ctx, ox, oy, size, size, mx.error, s); return; }
+  const q = el.transparent ? 0 : (el.margin ?? 2), n = mx.n, cell = size / (n + 2 * q);
+  if (!el.transparent) { ctx.fillStyle = el.bg || '#fff'; ctx.fillRect(Math.round(ox), Math.round(oy), Math.round(ox + size) - Math.round(ox), Math.round(oy + size) - Math.round(oy)); }
+  ctx.fillStyle = el.fg || '#000';
+  for (let r = 0; r < n; r++) {
+    const y0 = Math.round(oy + (q + r) * cell), y1 = Math.round(oy + (q + r + 1) * cell);
+    let c = 0;
+    while (c < n) {
+      if (!mx.m[r][c]) { c++; continue; }
+      const c0 = c; while (c < n && mx.m[r][c]) c++;
+      const x0 = Math.round(ox + (q + c0) * cell), x1 = Math.round(ox + (q + c) * cell);
+      ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+    }
+  }
+}
+
+const barCache = new Map();
+function barEncode(value, format) {
+  const key = format + '|' + value;
+  if (barCache.has(key)) return barCache.get(key);
+  let res;
+  if (!window.JsBarcode) res = {error: 'Brak biblioteki (offline?)'};
+  else {
+    const o = {}; let ok = true;
+    try { JsBarcode(o, value, {format, valid: v => ok = v}); } catch (e) { ok = false; }
+    res = ok && o.encodings ? {enc: o.encodings} : {error: barHint(format)};
+  }
+  if (barCache.size > 50) barCache.clear();
+  barCache.set(key, res);
+  return res;
+}
+function barHint(f) {
+  return ({EAN13:'EAN-13: 12 lub 13 cyfr', EAN8:'EAN-8: 7 lub 8 cyfr', UPC:'UPC-A: 11 lub 12 cyfr', ITF14:'ITF-14: 13 lub 14 cyfr', CODE39:'Code39: A-Z, 0-9, - . $ / + %'}[f]) || 'Code128: tylko znaki ASCII';
+}
+
+function drawBarcode(ctx, el, x, y, w, h, s, opt) {
+  if (!el.value) { if (opt.editor) placeholder(ctx, x, y, w, h, 'Kod kreskowy', s); return; }
+  const r = barEncode(el.value, el.format || 'CODE128');
+  if (r.error) { errBox(ctx, x, y, w, h, r.error, s); return; }
+  const enc = r.enc;
+  const total = enc.reduce((a, e) => a + e.data.length, 0);
+  const quiet = el.transparent ? 0 : 6;
+  const mod = w / (total + quiet * 2);
+  const padY = el.transparent ? 0 : h * .07;
+  const textH = el.showText !== false ? Math.min(h * .24, mod * 14) : 0;
+  const barsTop = y + padY, barsH = h - padY * 2 - textH;
+  if (!el.transparent) { ctx.fillStyle = el.bg || '#fff'; ctx.fillRect(Math.round(x), Math.round(y), Math.round(x + w) - Math.round(x), Math.round(y + h) - Math.round(y)); }
+  ctx.fillStyle = el.fg || '#000';
+  let pos = quiet;
+  const segs = [];
+  for (const e of enc) {
+    const tall = !e.text && e.options && e.options.height > 100 && textH;
+    const bh = tall ? barsH + textH * .5 : barsH;
+    const d = e.data;
+    let i = 0;
+    while (i < d.length) {
+      if (d[i] !== '1') { i++; continue; }
+      const i0 = i; while (i < d.length && d[i] === '1') i++;
+      const x0 = Math.round(x + (pos + i0) * mod), x1 = Math.round(x + (pos + i) * mod);
+      ctx.fillRect(x0, Math.round(barsTop), x1 - x0, Math.round(barsTop + bh) - Math.round(barsTop));
+    }
+    segs.push({x: x + pos * mod, w: d.length * mod, text: e.text});
+    pos += d.length;
+  }
+  if (textH) {
+    const ty = barsTop + barsH + textH * .55;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (const sg of segs) {
+      if (!sg.text) continue;
+      let fs = textH * .82;
+      ctx.font = `500 ${fs}px "Roboto Mono", ui-monospace, monospace`;
+      const tw = ctx.measureText(sg.text).width;
+      if (tw > sg.w * .96 && sg.text.length > 1) { fs *= sg.w * .96 / tw; ctx.font = `500 ${fs}px "Roboto Mono", ui-monospace, monospace`; }
+      ctx.fillText(sg.text, sg.x + sg.w / 2, ty);
+    }
+  }
+}
+
+// ---------------- preview canvas ----------------
+const cardEl = $('#card'), cv = $('#cv'), cctx = cv.getContext('2d'), selBox = $('#sel');
+let guides = null, raf = 0;
+function fitCanvas() {
+  const r = cardEl.getBoundingClientRect();
+  const dpr = Math.min(window.devicePixelRatio || 1, 3);
+  const w = Math.round(r.width * dpr), h = Math.round(r.height * dpr);
+  if (w && (cv.width !== w || cv.height !== h)) { cv.width = w; cv.height = h; }
+  draw();
+}
+function render() { if (!raf) raf = requestAnimationFrame(() => { raf = 0; draw(); }); }
+function draw() {
+  const s = cv.width / W;
+  renderCard(cctx, s, {editor: true});
+  if (guides) {
+    cctx.save(); cctx.strokeStyle = '#f0f'; cctx.lineWidth = Math.max(1, s);
+    cctx.setLineDash([5 * s, 4 * s]);
+    for (const gx of guides.x) { cctx.beginPath(); cctx.moveTo(gx * s, 0); cctx.lineTo(gx * s, H * s); cctx.stroke(); }
+    for (const gy of guides.y) { cctx.beginPath(); cctx.moveTo(0, gy * s); cctx.lineTo(W * s, gy * s); cctx.stroke(); }
+    cctx.restore();
+  }
+  updateSelBox();
+}
+function updateSelBox() {
+  const el = selEl();
+  if (!el) { selBox.hidden = true; return; }
+  selBox.hidden = false;
+  selBox.style.left = (el.x / W * 100) + '%';
+  selBox.style.top = (el.y / H * 100) + '%';
+  selBox.style.width = (el.w / W * 100) + '%';
+  selBox.style.height = (el.h / H * 100) + '%';
+}
+new ResizeObserver(fitCanvas).observe(cardEl);
+if (document.fonts) document.fonts.ready.then(() => { render(); renderPresetThumbs(); });
+
+// ---------------- history / autosave ----------------
+let hist = [], redoS = [], snap = '';
+function resetHistory() { hist = []; redoS = []; snap = JSON.stringify(state); updUndo(); }
+function commit() {
+  const s = JSON.stringify(state);
+  if (s === snap) return;
+  hist.push(snap); if (hist.length > 80) hist.shift();
+  snap = s; redoS = []; updUndo(); autosave();
+}
+const commitSoon = debounce(commit, 450);
+function undo() { commit(); if (!hist.length) return; redoS.push(snap); snap = hist.pop(); state = JSON.parse(snap); afterStateChange(); }
+function redo() { if (!redoS.length) return; hist.push(snap); snap = redoS.pop(); state = JSON.parse(snap); afterStateChange(); }
+function updUndo() { $('#undoBtn').disabled = !hist.length; $('#redoBtn').disabled = !redoS.length; }
+function afterStateChange() {
+  if (sel && !getEl(sel)) sel = null;
+  updUndo(); refreshAll(); autosave();
+}
+function usedAssets(st) {
+  const ids = new Set([st.bg.image, st.quick.logo, ...st.els.map(e => e.asset)].filter(Boolean));
+  const o = {}; ids.forEach(id => { if (assets[id]) o[id] = assets[id]; }); return o;
+}
+let warnedQuota = false;
+const autosave = debounce(() => {
+  try { localStorage.setItem('cm.work', JSON.stringify({state, assets: usedAssets(state), projectId})); }
+  catch (e) { if (!warnedQuota) { warnedQuota = true; toast('Brak miejsca na autozapis – usuń stare projekty'); } }
+}, 700);
+
+// ---------------- pointer interaction ----------------
+const pointers = new Map();
+let gesture = null;
+function toCard(e) {
+  const r = cardEl.getBoundingClientRect();
+  return {x: (e.clientX - r.left) / r.width * W, y: (e.clientY - r.top) / r.height * H, k: W / r.width};
+}
+function hitTest(p) {
+  const tol = 6 * p.k;
+  for (let i = state.els.length - 1; i >= 0; i--) {
+    const e = state.els[i];
+    if (e.locked) continue;
+    if (p.x >= e.x - tol && p.x <= e.x + e.w + tol && p.y >= e.y - tol && p.y <= e.y + e.h + tol) return e;
+  }
+  return null;
+}
+const lockAspect = el => el.type === 'qr' || el.type === 'image';
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+
+cardEl.addEventListener('pointerdown', e => {
+  if (e.button > 0) return;
+  try { cardEl.setPointerCapture(e.pointerId); } catch (_) {}
+  pointers.set(e.pointerId, {x: e.clientX, y: e.clientY});
+  const el = selEl();
+  if (pointers.size === 2 && el) {
+    const [a, b] = [...pointers.values()];
+    gesture = {type: 'pinch', d0: dist(a, b) || 1, orig: {...el}};
+    guides = null; return;
+  }
+  if (pointers.size > 1) return;
+  const p = toCard(e);
+  const h = e.target.closest('[data-h]');
+  if (h && el) {
+    e.preventDefault();
+    if (h.dataset.h === 'del') { deleteSel(); gesture = null; return; }
+    gesture = {type: 'resize', start: p, orig: {...el}};
+    return;
+  }
+  const hit = hitTest(p);
+  if (hit) {
+    if (sel !== hit.id) select(hit.id);
+    gesture = {type: 'move', start: p, orig: {...hit}};
+  } else { select(null); gesture = null; }
+});
+
+cardEl.addEventListener('pointermove', e => {
+  if (!pointers.has(e.pointerId)) return;
+  pointers.set(e.pointerId, {x: e.clientX, y: e.clientY});
+  const el = selEl();
+  if (!gesture || !el) return;
+  e.preventDefault();
+  const o = gesture.orig;
+  if (gesture.type === 'pinch') {
+    if (pointers.size < 2) return;
+    const [a, b] = [...pointers.values()];
+    const k = clamp(dist(a, b) / gesture.d0, 0.15, 8);
+    const cx = o.x + o.w / 2, cy = o.y + o.h / 2;
+    el.w = clamp(o.w * k, 12, W * 2); el.h = clamp(o.h * k, 8, H * 2);
+    el.x = cx - el.w / 2; el.y = cy - el.h / 2;
+    render(); return;
+  }
+  const p = toCard(e), dx = p.x - gesture.start.x, dy = p.y - gesture.start.y;
+  if (gesture.type === 'move') {
+    let nx = o.x + dx, ny = o.y + dy;
+    const t = 7 * p.k; guides = {x: [], y: []};
+    const cx = nx + o.w / 2, cy = ny + o.h / 2;
+    if (Math.abs(cx - W / 2) < t) { nx = W / 2 - o.w / 2; guides.x.push(W / 2); }
+    else if (Math.abs(nx) < t) { nx = 0; guides.x.push(0); }
+    else if (Math.abs(nx + o.w - W) < t) { nx = W - o.w; guides.x.push(W); }
+    if (Math.abs(cy - H / 2) < t) { ny = H / 2 - o.h / 2; guides.y.push(H / 2); }
+    else if (Math.abs(ny) < t) { ny = 0; guides.y.push(0); }
+    else if (Math.abs(ny + o.h - H) < t) { ny = H - o.h; guides.y.push(H); }
+    el.x = nx; el.y = ny;
+  } else if (gesture.type === 'resize') {
+    let nw = Math.max(12, o.w + dx), nh = Math.max(8, o.h + dy);
+    if (lockAspect(el)) { const k = Math.max(12 / o.w, (nw + nh) / (o.w + o.h)); nw = o.w * k; nh = o.h * k; }
+    el.w = nw; el.h = nh;
+  }
+  render();
+}, {passive: false});
+
+function endPointer(e) {
+  if (!pointers.has(e.pointerId)) return;
+  pointers.delete(e.pointerId);
+  if (gesture && (gesture.type === 'pinch' || pointers.size === 0)) {
+    gesture = null; guides = null; commit(); render();
+  }
+}
+cardEl.addEventListener('pointerup', endPointer);
+cardEl.addEventListener('pointercancel', endPointer);
+cardEl.addEventListener('lostpointercapture', endPointer);
+// iOS: stop page scroll / zoom gestures on the card
+cardEl.addEventListener('touchmove', e => e.preventDefault(), {passive: false});
+cardEl.addEventListener('gesturestart', e => e.preventDefault());
+
+document.addEventListener('keydown', e => {
+  const typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName);
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
+    if (typing) return; e.preventDefault(); e.shiftKey ? redo() : undo(); return;
+  }
+  if (typing) return;
+  const el = selEl(); if (!el) return;
+  const step = e.shiftKey ? 10 : 2;
+  const mv = {ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step]}[e.key];
+  if (mv) { e.preventDefault(); el.x += mv[0]; el.y += mv[1]; render(); commitSoon(); }
+  else if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); deleteSel(); }
+  else if (e.key === 'Escape') select(null);
+});
+
+// ---------------- selection & element ops ----------------
+function select(id) {
+  sel = id;
+  render(); renderProps(); renderLayers();
+  if (id && tab !== 'el') setTab('el');
+}
+function deleteSel() {
+  const el = selEl(); if (!el) return;
+  state.els = state.els.filter(e => e !== el);
+  sel = null; commit(); refreshAll();
+}
+function addElement(el, doSelect = true) {
+  el.id = el.id || uid();
+  state.els.push(el);
+  commit();
+  if (doSelect) select(el.id); else refreshAll();
+  return el;
+}
+function makeEl(type, extra = {}) {
+  const base = {id: uid(), type, opacity: 1};
+  const d = {
+    text: {x: 228, y: 230, w: 400, h: 80, text: 'Tekst', font: 'Inter', color: '#ffffff', bold: true, italic: false, align: 'center', shadow: false},
+    qr: {x: 318, y: 160, w: 220, h: 220, value: 'https://example.com', fg: '#111111', bg: '#ffffff', transparent: false, ecc: 'M', margin: 2},
+    barcode: {x: 168, y: 300, w: 520, h: 190, value: '123456789012', format: 'CODE128', fg: '#111111', bg: '#ffffff', transparent: false, showText: true},
+    image: {x: 278, y: 170, w: 300, h: 200, asset: null, fit: 'contain', radius: 0},
+    shape: {x: 0, y: 380, w: 856, h: 160, fill: '#ffffff', radius: 0},
+  }[type];
+  return Object.assign(base, d, extra);
+}
+
+// ---------------- presets ----------------
+// Each preset: slots (rects in card units) for roles. qr/bar = code slot per code kind.
+const PRESETS = [
+  {id: 'logo-qr', title: 'Logo + QR na środku', kind: 'QR', textColor: '#ffffff',
+    logo: {x: 40, y: 34, w: 220, h: 90},
+    name: {x: 280, y: 42, w: 536, h: 74, align: 'right', bold: true},
+    sub: {x: 60, y: 428, w: 736, h: 56},
+    qr: {x: 303, y: 138, w: 260, h: 260},
+    bar: {x: 128, y: 150, w: 600, h: 240}},
+  {id: 'bar-bottom', title: 'Nazwa u góry + kod na dole', kind: 'CODE128', textColor: '#ffffff',
+    name: {x: 50, y: 36, w: 756, h: 96, bold: true},
+    sub: {x: 50, y: 138, w: 756, h: 46},
+    logo: {x: 338, y: 196, w: 180, h: 110},
+    shapes: [{x: 0, y: 330, w: 856, h: 210, fill: '#ffffff'}],
+    qr: {x: 338, y: 345, w: 180, h: 180, transparent: true},
+    bar: {x: 90, y: 352, w: 676, h: 168, transparent: true}},
+  {id: 'business', title: 'Wizytówka', kind: 'QR', textColor: '#ffffff',
+    logo: {x: 50, y: 44, w: 200, h: 84},
+    name: {x: 50, y: 168, w: 500, h: 84, align: 'left', bold: true},
+    sub: {x: 50, y: 262, w: 500, h: 110, align: 'left'},
+    qr: {x: 590, y: 150, w: 220, h: 220},
+    bar: {x: 50, y: 400, w: 756, h: 110}},
+  {id: 'photo', title: 'Zdjęcie + kod w rogu', kind: 'QR', textColor: '#ffffff', shadow: true,
+    sub: {x: 36, y: 36, w: 420, h: 48, align: 'left'},
+    logo: {x: 626, y: 34, w: 196, h: 80},
+    name: {x: 36, y: 424, w: 400, h: 80, align: 'left', bold: true},
+    qr: {x: 650, y: 330, w: 176, h: 176},
+    bar: {x: 470, y: 404, w: 356, h: 106}},
+  {id: 'code-only', title: 'Sam kod do skanowania', kind: 'CODE128', textColor: '#111111',
+    bgHint: {color: '#ffffff', color2: '#e5e7eb', gradient: false},
+    logo: {x: 36, y: 28, w: 130, h: 70},
+    name: {x: 180, y: 32, w: 496, h: 62, bold: true},
+    sub: {x: 50, y: 452, w: 756, h: 54},
+    qr: {x: 298, y: 110, w: 260, h: 330, transparent: true},
+    bar: {x: 60, y: 120, w: 736, h: 310, transparent: true}},
+  {id: 'loyalty', title: 'Lojalnościowa z panelem', kind: 'CODE128', textColor: '#ffffff',
+    logo: {x: 328, y: 26, w: 200, h: 100},
+    name: {x: 50, y: 136, w: 756, h: 64, bold: true},
+    sub: {x: 50, y: 206, w: 756, h: 40},
+    shapes: [{x: 96, y: 266, w: 664, h: 240, fill: '#ffffff', radius: 28}],
+    qr: {x: 338, y: 282, w: 180, h: 210, transparent: true},
+    bar: {x: 122, y: 286, w: 612, h: 200, transparent: true}},
+];
+const DEFAULT_SLOTS = {
+  name: {x: 50, y: 40, w: 756, h: 80, bold: true}, sub: {x: 50, y: 126, w: 756, h: 44},
+  logo: {x: 40, y: 34, w: 200, h: 90}, qr: {x: 318, y: 180, w: 220, h: 220}, bar: {x: 128, y: 300, w: 600, h: 200},
+};
+const presetById = id => PRESETS.find(p => p.id === id);
+const codeKind = f => f === 'QR' ? 'qr' : 'bar';
+const slotOf = (st, key) => { const p = presetById(st.preset); return (p && p[key]) || DEFAULT_SLOTS[key]; };
+
+function codeElFor(st, q) {
+  const kind = codeKind(q.format), r = slotOf(st, kind);
+  if (kind === 'qr') {
+    const side = Math.min(r.w, r.h);
+    return makeEl('qr', {role: 'code', x: r.x + (r.w - side) / 2, y: r.y + (r.h - side) / 2, w: side, h: side, value: q.code, transparent: !!r.transparent, margin: r.transparent ? 0 : 2});
+  }
+  return makeEl('barcode', {role: 'code', x: r.x, y: r.y, w: r.w, h: r.h, value: q.code, format: q.format, transparent: !!r.transparent});
+}
+function textElFor(st, role, text, p) {
+  const r = slotOf(st, role);
+  return makeEl('text', {role, x: r.x, y: r.y, w: r.w, h: r.h, text, align: r.align || 'center', bold: !!r.bold,
+    color: (p && p.textColor) || '#ffffff', shadow: !!(p && p.shadow), font: 'Inter'});
+}
+function logoElFor(st, asset) {
+  const r = slotOf(st, 'logo');
+  return makeEl('image', {role: 'logo', x: r.x, y: r.y, w: r.w, h: r.h, asset, fit: 'contain'});
+}
+function buildPreset(st, p) {
+  st.preset = p.id;
+  const q = st.quick, els = [];
+  for (const sh of (p.shapes || [])) els.push(makeEl('shape', {...sh}));
+  if (q.logo) els.push(logoElFor(st, q.logo));
+  els.push(textElFor(st, 'name', q.name, p));
+  els.push(textElFor(st, 'sub', q.sub, p));
+  els.push(codeElFor(st, q));
+  st.els = els;
+  if (p.bgHint && !st.bg.image) Object.assign(st.bg, p.bgHint);
+}
+function applyPreset(id) {
+  const p = presetById(id); if (!p) return;
+  if (state.els.length && state.preset !== id && !state.els.every(e => e.role || e.type === 'shape')) {
+    if (!confirm('Zastosować układ? Twoje własne elementy zostaną zastąpione.')) return;
+  }
+  if (!state.quick.code) state.quick.format = p.kind;
+  buildPreset(state, p);
+  sel = null; commit(); refreshAll();
+}
+
+// quick fields -> elements
+function syncQuick(field) {
+  const q = state.quick, p = presetById(state.preset);
+  if (field === 'name' || field === 'sub') {
+    let el = state.els.find(e => e.role === field);
+    if (!el && q[field]) { el = textElFor(state, field, '', p); state.els.push(el); }
+    if (el) el.text = q[field];
+  } else if (field === 'code' || field === 'format') {
+    let el = state.els.find(e => e.role === 'code');
+    const kind = codeKind(q.format);
+    if (el && (el.type === 'qr') !== (kind === 'qr')) {
+      const idx = state.els.indexOf(el), nel = codeElFor(state, q);
+      if (!state.preset) { // no preset: keep the old centre
+        const cx = el.x + el.w / 2, cy = el.y + el.h / 2;
+        nel.x = clamp(cx - nel.w / 2, 0, W - nel.w); nel.y = clamp(cy - nel.h / 2, 0, H - nel.h);
+      }
+      nel.id = el.id; state.els[idx] = nel; el = nel;
+    } else if (!el && q.code) { el = codeElFor(state, q); state.els.push(el); }
+    if (el) { el.value = q.code; if (el.type === 'barcode') el.format = q.format; }
+    $('#qErr').textContent = (kind === 'bar' && q.code && barEncode(q.code, q.format).error) || '';
+  } else if (field === 'logo') {
+    let el = state.els.find(e => e.role === 'logo');
+    if (!el && q.logo) { el = logoElFor(state, q.logo); state.els.splice(firstNonShape(), 0, el); }
+    else if (el && q.logo) el.asset = q.logo;
+    else if (el && !q.logo) state.els = state.els.filter(e => e !== el);
+  }
+}
+const firstNonShape = () => { const i = state.els.findIndex(e => e.type !== 'shape'); return i < 0 ? state.els.length : i; };
+// element edits -> quick fields
+function syncFromEl(el) {
+  if (el.role === 'name' || el.role === 'sub') state.quick[el.role] = el.text;
+  if (el.role === 'code') { state.quick.code = el.value; if (el.type === 'barcode' && ['CODE128','EAN13'].includes(el.format)) state.quick.format = el.format; }
+}
+
+// ---------------- image upload ----------------
+function loadImage(src) { return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; }); }
+async function fileToDataURL(file, maxSide, keepAlpha) {
+  const url = URL.createObjectURL(file);
+  try {
+    const im = await loadImage(url);
+    const k = Math.min(1, maxSide / Math.max(im.naturalWidth, im.naturalHeight));
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(im.naturalWidth * k)); c.height = Math.max(1, Math.round(im.naturalHeight * k));
+    c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+    const png = keepAlpha && /png|webp|gif|svg/i.test(file.type);
+    return {url: c.toDataURL(png ? 'image/png' : 'image/jpeg', .88), w: c.width, h: c.height};
+  } finally { URL.revokeObjectURL(url); }
+}
+async function handleFile(file, kind) {
+  if (!file || !/^image\//.test(file.type || 'image/')) { toast('To nie jest obrazek'); return; }
+  try {
+    if (kind === 'bg') {
+      const r = await fileToDataURL(file, 1800, false);
+      state.bg.image = addAsset(r.url); state.bg.zoom = 1; state.bg.px = 50; state.bg.py = 50;
+      commit(); refreshAll(); toast('Tło ustawione');
+    } else if (kind === 'logo') {
+      const r = await fileToDataURL(file, 800, true);
+      state.quick.logo = addAsset(r.url); syncQuick('logo'); commit(); refreshAll();
+    } else if (kind === 'img') {
+      const r = await fileToDataURL(file, 1000, true);
+      const a = addAsset(r.url), ar = r.w / r.h;
+      let w = 300, h = w / ar; if (h > 300) { h = 300; w = h * ar; }
+      addElement(makeEl('image', {asset: a, x: (W - w) / 2, y: (H - h) / 2, w, h}));
+    } else if (kind === 'replace') {
+      const el = selEl(); if (!el) return;
+      const r = await fileToDataURL(file, 1000, true);
+      el.asset = addAsset(r.url);
+      if (el.role === 'logo') state.quick.logo = el.asset;
+      commit(); refreshAll();
+    }
+  } catch (e) { console.error(e); toast('Nie udało się wczytać obrazka'); }
+}
+function bindFile(input, kind) {
+  input.addEventListener('change', () => { const f = input.files && input.files[0]; input.value = ''; if (f) handleFile(f, kind); });
+}
+bindFile($('#qLogo'), 'logo'); bindFile($('#qBg'), 'bg'); bindFile($('#bgFile'), 'bg'); bindFile($('#addImg'), 'img');
+
+function bindDrop(target, kind, cls) {
+  target.addEventListener('dragover', e => { e.preventDefault(); target.classList.add(cls); });
+  target.addEventListener('dragleave', () => target.classList.remove(cls));
+  target.addEventListener('drop', e => {
+    e.preventDefault(); target.classList.remove(cls);
+    const f = e.dataTransfer.files && e.dataTransfer.files[0]; if (f) handleFile(f, kind);
+  });
+}
+bindDrop(cardEl, 'bg', 'drop'); bindDrop($('#bgDrop'), 'bg', 'over');
+window.addEventListener('dragover', e => e.preventDefault());
+window.addEventListener('drop', e => e.preventDefault());
+
+// ---------------- generic form helpers ----------------
+const seg = (k, opts, v) => `<div class="seg">${opts.map(([val, lab]) => `<button type="button" data-k="${k}" data-v="${esc(val)}" class="${String(v) === String(val) ? 'on' : ''}">${lab}</button>`).join('')}</div>`;
+const colorFld = (k, label, v) => `<div class="fld"><span>${label}</span><div class="colors">${SWATCHES.map(c => `<button type="button" class="sw ${String(v).toLowerCase() === c ? 'on' : ''}" style="--c:${c}" data-k="${k}" data-v="${c}" aria-label="${c}"></button>`).join('')}<input type="color" data-k="${k}" value="${esc(v)}"></div></div>`;
+const sw = (k, label, v) => `<label class="switch"><span>${label}</span><input type="checkbox" data-k="${k}" ${v ? 'checked' : ''}></label>`;
+const rng = (k, label, v, min, max, step, fmt = x => x) => `<div class="fld"><span>${label}</span><div class="rng"><input type="range" data-k="${k}" min="${min}" max="${max}" step="${step}" value="${v}"><output>${fmt(v)}</output></div></div>`;
+
+function bindForm(root, getObj, onChange, onRerender) {
+  root.addEventListener('input', e => {
+    const t = e.target, k = t.dataset.k; if (!k) return;
+    const o = getObj(); if (!o) return;
+    let v = t.type === 'checkbox' ? t.checked : t.type === 'range' ? Number(t.value) : t.value;
+    o[k] = v;
+    if (t.type === 'range' && t.nextElementSibling) t.nextElementSibling.textContent = fmtRange(k, v);
+    if (t.type === 'color') root.querySelectorAll(`.sw[data-k="${k}"]`).forEach(b => b.classList.toggle('on', b.dataset.v === v.toLowerCase()));
+    onChange(k, t);
+  });
+  root.addEventListener('change', e => { if (e.target.dataset.k) commit(); });
+  root.addEventListener('click', e => {
+    const b = e.target.closest('button[data-k]'); if (!b) return;
+    const o = getObj(); if (!o) return;
+    const k = b.dataset.k; let v = b.dataset.v;
+    if (v === 'true' || v === 'false') v = v === 'true';
+    o[k] = v; onChange(k, b); commit(); onRerender();
+  });
+}
+function fmtRange(k, v) {
+  if (k === 'opacity' || k === 'dim') return Math.round(v * 100) + '%';
+  if (k === 'zoom') return v.toFixed(2) + '×';
+  if (k === 'angle') return v + '°';
+  return String(v);
+}
+
+// ---------------- props panel ----------------
+const propsEl = $('#props');
+function renderProps() {
+  const el = selEl();
+  if (!el) { propsEl.innerHTML = `<div class="sec"><div class="empty">Dotknij elementu na karcie albo wybierz go z listy warstw poniżej.</div></div>`; return; }
+  let h = `<div class="sec"><h3>${TYPE_LABEL[el.type]}${el.role ? ' · powiązany z „Dane karty”' : ''}</h3>`;
+  if (el.type === 'text') {
+    h += `<label class="fld"><span>Tekst (Enter = nowa linia)</span><textarea data-k="text" rows="2">${esc(el.text)}</textarea></label>
+      <label class="fld"><span>Czcionka</span><select data-k="font">${FONTS.map(f => `<option value="${esc(f.id)}" ${f.id === el.font ? 'selected' : ''}>${f.label}</option>`).join('')}</select></label>
+      ${colorFld('color', 'Kolor', el.color)}
+      <div class="fld"><span>Wyrównanie</span>${seg('align', [['left', 'Do lewej'], ['center', 'Środek'], ['right', 'Do prawej']], el.align)}</div>
+      ${sw('bold', 'Pogrubienie', el.bold)}${sw('italic', 'Kursywa', el.italic)}${sw('shadow', 'Cień (czytelność na zdjęciu)', el.shadow)}
+      <p class="hint">Rozmiar tekstu dopasowuje się do ramki – rozciągnij ją kropką w rogu.</p>`;
+  } else if (el.type === 'qr') {
+    h += `<label class="fld"><span>Zawartość (link, numer, tekst)</span><textarea data-k="value" rows="2" autocapitalize="off" spellcheck="false">${esc(el.value)}</textarea></label>
+      <div class="fld"><span>Korekcja błędów</span>${seg('ecc', [['L', 'L'], ['M', 'M'], ['Q', 'Q'], ['H', 'H']], el.ecc)}</div>
+      ${colorFld('fg', 'Kolor kodu', el.fg)}${colorFld('bg', 'Kolor tła kodu', el.bg)}
+      ${sw('transparent', 'Przezroczyste tło', el.transparent)}
+      ${rng('margin', 'Margines (moduły)', el.margin ?? 2, 0, 4, 1)}
+      <p class="hint">Skanery najlepiej czytają ciemny kod na jasnym tle z marginesem.</p>`;
+  } else if (el.type === 'barcode') {
+    const err = el.value ? barEncode(el.value, el.format).error || '' : '';
+    h += `<label class="fld"><span>Numer / zawartość</span><input type="text" data-k="value" value="${esc(el.value)}" autocapitalize="off" spellcheck="false" inputmode="${/EAN|UPC|ITF/.test(el.format) ? 'numeric' : 'text'}"><p class="err" id="barErr">${esc(err)}</p></label>
+      <label class="fld"><span>Format</span><select data-k="format">${BAR_FORMATS.map(([v, l]) => `<option value="${v}" ${v === el.format ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+      ${sw('showText', 'Pokaż numer pod kodem', el.showText !== false)}
+      ${colorFld('fg', 'Kolor kresek', el.fg)}${colorFld('bg', 'Kolor tła', el.bg)}
+      ${sw('transparent', 'Przezroczyste tło', el.transparent)}`;
+  } else if (el.type === 'image') {
+    h += `<label class="btn block" style="margin-bottom:12px"><input type="file" accept="image/*" class="file" id="replImg">Zmień obrazek</label>
+      <div class="fld"><span>Dopasowanie</span>${seg('fit', [['contain', 'Cały obrazek'], ['cover', 'Wypełnij ramkę']], el.fit)}</div>
+      ${rng('radius', 'Zaokrąglenie rogów', el.radius || 0, 0, 150, 1)}`;
+  } else if (el.type === 'shape') {
+    h += `${colorFld('fill', 'Kolor', el.fill)}${rng('radius', 'Zaokrąglenie rogów', el.radius || 0, 0, 150, 1)}`;
+  }
+  h += `${rng('opacity', 'Krycie', el.opacity ?? 1, 0.05, 1, 0.05, v => Math.round(v * 100) + '%')}</div>
+    <div class="sec"><h3>Pozycja</h3><div class="grid3">
+      <button class="btn" data-act="cx">Środek ↔</button><button class="btn" data-act="cy">Środek ↕</button><button class="btn" data-act="dup">Duplikuj</button>
+      <button class="btn" data-act="front">Na wierzch</button><button class="btn" data-act="back">Pod spód</button><button class="btn danger" data-act="del">Usuń</button>
+    </div></div>`;
+  propsEl.innerHTML = h;
+  const ri = $('#replImg'); if (ri) bindFile(ri, 'replace');
+}
+bindForm(propsEl, selEl, (k) => {
+  const el = selEl();
+  if (el.role) syncFromEl(el);
+  if (el.type === 'barcode' && (k === 'value' || k === 'format')) {
+    const e = $('#barErr'); if (e) e.textContent = el.value ? barEncode(el.value, el.format).error || '' : '';
+    if (k === 'format') { const inp = propsEl.querySelector('input[data-k=value]'); if (inp) inp.inputMode = /EAN|UPC|ITF/.test(el.format) ? 'numeric' : 'text'; }
+  }
+  if (k === 'text' || k === 'value') renderLayers();
+  render(); commitSoon();
+}, () => { renderProps(); });
+propsEl.addEventListener('click', e => {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  const el = selEl(); if (!el) return;
+  const i = state.els.indexOf(el);
+  switch (b.dataset.act) {
+    case 'cx': el.x = (W - el.w) / 2; break;
+    case 'cy': el.y = (H - el.h) / 2; break;
+    case 'dup': { const c = {...el, id: uid(), x: el.x + 20, y: el.y + 20}; delete c.role; state.els.splice(i + 1, 0, c); sel = c.id; break; }
+    case 'front': state.els.splice(i, 1); state.els.push(el); break;
+    case 'back': state.els.splice(i, 1); state.els.unshift(el); break;
+    case 'del': deleteSel(); return;
+  }
+  commit(); refreshAll();
+});
+
+function renderLayers() {
+  const L = $('#layers');
+  if (!state.els.length) { L.innerHTML = `<div class="empty">Brak elementów. Dodaj coś w zakładce „Dodaj” albo wybierz szablon.</div>`; return; }
+  L.innerHTML = [...state.els].reverse().map(e => {
+    const lbl = e.type === 'text' ? (e.text || ROLE_PH[e.role] || '(pusty)') : e.type === 'qr' || e.type === 'barcode' ? (e.value || '(pusty)') : e.role === 'logo' ? 'Logo' : TYPE_LABEL[e.type];
+    return `<button class="layer ${e.id === sel ? 'on' : ''}" data-id="${e.id}"><span>${esc(lbl.split('\n')[0])}</span><em>${TYPE_LABEL[e.type]}</em></button>`;
+  }).join('');
+}
+$('#layers').addEventListener('click', e => { const b = e.target.closest('[data-id]'); if (b) select(b.dataset.id); });
+
+// ---------------- background panel ----------------
+function renderBg() {
+  const b = state.bg;
+  $('#bgImgCtl').innerHTML = b.image ? `<div style="height:12px"></div>
+    ${rng('zoom', 'Powiększenie', b.zoom || 1, 1, 3, 0.01, v => v.toFixed(2) + '×')}
+    ${rng('px', 'Przesunięcie poziomo', b.px ?? 50, 0, 100, 1)}
+    ${rng('py', 'Przesunięcie pionowo', b.py ?? 50, 0, 100, 1)}
+    ${rng('dim', 'Przyciemnienie', b.dim || 0, 0, 0.8, 0.05, v => Math.round(v * 100) + '%')}
+    <button class="btn danger block" data-act="rmbg">Usuń zdjęcie tła</button>` : '';
+  $('#bgForm').innerHTML = `<h3>Kolor i wygląd</h3>
+    ${colorFld('color', b.gradient ? 'Kolor 1' : 'Kolor tła', b.color)}
+    ${sw('gradient', 'Gradient', b.gradient)}
+    ${b.gradient ? colorFld('color2', 'Kolor 2', b.color2) + rng('angle', 'Kąt gradientu', b.angle ?? 135, 0, 360, 5, v => v + '°') : ''}
+    ${!b.image ? rng('dim', 'Przyciemnienie', b.dim || 0, 0, 0.8, 0.05, v => Math.round(v * 100) + '%') : ''}
+    <label class="switch"><span>Zaokrąglone rogi karty</span><input type="checkbox" data-card="rounded" ${state.rounded ? 'checked' : ''}></label>`;
+}
+bindForm($('#bgImgCtl'), () => state.bg, () => render(), renderBg);
+bindForm($('#bgForm'), () => state.bg, (k) => { render(); if (k === 'gradient') renderBg(); }, renderBg);
+$('#bgForm').addEventListener('change', e => { if (e.target.dataset.card) { state.rounded = e.target.checked; render(); commit(); } });
+$('#bgImgCtl').addEventListener('click', e => {
+  if (e.target.closest('[data-act=rmbg]')) { state.bg.image = null; state.bg.dim = 0; commit(); refreshAll(); }
+});
+
+// ---------------- quick panel ----------------
+$('#quick').addEventListener('input', e => {
+  const k = e.target.dataset.q; if (!k) return;
+  state.quick[k] = e.target.value; syncQuick(k); render(); renderLayers(); commitSoon();
+  if (sel) renderProps();
+});
+$('#qFormat').addEventListener('click', e => {
+  const b = e.target.closest('[data-f]'); if (!b) return;
+  state.quick.format = b.dataset.f; syncQuick('format'); commit(); refreshAll();
+  const inp = $('[data-q=code]'); inp.inputMode = b.dataset.f === 'EAN13' ? 'numeric' : 'text';
+});
+function renderQuick() {
+  const q = state.quick;
+  $$('#quick [data-q]').forEach(i => { if (document.activeElement !== i) i.value = q[i.dataset.q] || ''; });
+  $$('#qFormat button').forEach(b => b.classList.toggle('on', b.dataset.f === q.format));
+  $('#qErr').textContent = (codeKind(q.format) === 'bar' && q.code && barEncode(q.code, q.format).error) || '';
+  $$('#presets .preset').forEach(b => b.classList.toggle('on', b.dataset.p === state.preset));
+}
+
+// preset thumbs
+let sampleLogo = null;
+function makeSampleLogo() {
+  const c = document.createElement('canvas'); c.width = 240; c.height = 100;
+  const x = c.getContext('2d');
+  x.fillStyle = '#fff'; x.beginPath(); x.arc(50, 50, 38, 0, 7); x.fill();
+  x.fillStyle = '#7c3aed'; x.beginPath(); x.arc(50, 50, 18, 0, 7); x.fill();
+  x.fillStyle = '#fff'; x.font = '700 40px Inter, sans-serif'; x.textBaseline = 'middle'; x.fillText('LOGO', 100, 52);
+  sampleLogo = addAsset(c.toDataURL());
+}
+function presetSample(p) {
+  const st = newState();
+  st.quick = {name: 'Kawiarnia Ziarno', sub: 'Karta stałego klienta', code: p.kind === 'QR' ? 'https://example.com/karta/123' : '5901234123457', format: p.kind === 'QR' ? 'QR' : 'EAN13', logo: sampleLogo};
+  if (p.id === 'business') { st.quick.name = 'Anna Kowalska'; st.quick.sub = 'Projektantka\ntel. 600 100 200'; }
+  st.bg = {...st.bg, color: '#0f172a', color2: '#7c3aed'};
+  buildPreset(st, p);
+  return st;
+}
+function buildPresetGrid() {
+  $('#presets').innerHTML = PRESETS.map(p => `<button class="preset" data-p="${p.id}"><canvas></canvas><div>${p.title}</div></button>`).join('');
+}
+function renderPresetThumbs() {
+  $$('#presets .preset').forEach(b => {
+    const p = presetById(b.dataset.p), c = b.querySelector('canvas');
+    const w = Math.max(200, Math.round(c.getBoundingClientRect().width * (window.devicePixelRatio || 1))) || 300;
+    c.width = w; c.height = Math.round(w * H / W);
+    renderCard(c.getContext('2d'), w / W, {st: presetSample(p)});
+  });
+}
+$('#presets').addEventListener('click', e => { const b = e.target.closest('[data-p]'); if (b) applyPreset(b.dataset.p); });
+
+// ---------------- add panel ----------------
+$('.adds').addEventListener('click', e => {
+  const b = e.target.closest('[data-add]'); if (!b) return;
+  const t = b.dataset.add;
+  if (t === 'clear') {
+    if (state.els.length && confirm('Usunąć wszystkie elementy z karty? (tło zostaje)')) { state.els = []; state.preset = null; sel = null; commit(); refreshAll(); }
+    return;
+  }
+  const el = makeEl(t);
+  const n = state.els.filter(e => e.type === t).length;
+  if (t !== 'shape') { el.x += (n % 5) * 16; el.y += (n % 5) * 16; }
+  addElement(el);
+});
+
+// ---------------- tabs ----------------
+function setTab(t) {
+  tab = t;
+  $$('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  $$('.view').forEach(v => v.classList.toggle('on', v.dataset.view === t));
+  if (t === 'proj') renderProjects();
+  if (t === 'tpl') requestAnimationFrame(renderPresetThumbs);
+}
+$('#tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) setTab(b.dataset.tab); });
+
+// ---------------- projects ----------------
+const IDX = 'cm.index';
+const readIndex = () => { try { return JSON.parse(localStorage.getItem(IDX)) || []; } catch (_) { return []; } };
+function makeThumb() {
+  const c = document.createElement('canvas'); c.width = 240; c.height = Math.round(240 * H / W);
+  const x = c.getContext('2d');
+  renderCard(x, 240 / W, {rounded: false});
+  return c.toDataURL('image/jpeg', .72);
+}
+function saveProject(asNew) {
+  commit();
+  state.name = ($('#projName').value || '').trim() || state.name || 'Moja karta';
+  const id = (asNew || !projectId) ? 'p' + uid() : projectId;
+  const data = JSON.stringify({state, assets: usedAssets(state)});
+  const idx = readIndex().filter(p => p.id !== id);
+  try {
+    localStorage.setItem('cm.p.' + id, data);
+    idx.unshift({id, name: state.name, updated: Date.now(), thumb: makeThumb()});
+    localStorage.setItem(IDX, JSON.stringify(idx));
+  } catch (e) {
+    toast('Brak miejsca w pamięci przeglądarki. Usuń stare projekty albo zrób eksport .json.');
+    return;
+  }
+  projectId = id; autosave(); renderProjects(); renderTitle(); toast('Zapisano „' + state.name + '”');
+}
+function loadProject(id) {
+  try {
+    const d = JSON.parse(localStorage.getItem('cm.p.' + id));
+    Object.assign(assets, d.assets || {});
+    state = normalize(d.state); projectId = id; sel = null;
+    resetHistory(); refreshAll(); autosave(); toast('Wczytano „' + state.name + '”');
+  } catch (e) { toast('Nie udało się wczytać projektu'); }
+}
+function deleteProject(id) {
+  const p = readIndex().find(p => p.id === id);
+  if (!confirm(`Usunąć „${p ? p.name : 'projekt'}”?`)) return;
+  localStorage.removeItem('cm.p.' + id);
+  localStorage.setItem(IDX, JSON.stringify(readIndex().filter(p => p.id !== id)));
+  if (projectId === id) projectId = null;
+  renderProjects(); autosave();
+}
+function renderProjects() {
+  $('#projName').value = state.name || '';
+  const idx = readIndex();
+  $('#projList').innerHTML = idx.length ? idx.map(p => `<div class="proj ${p.id === projectId ? 'cur' : ''}">
+      <img src="${p.thumb || ''}" alt="">
+      <div class="meta"><b>${esc(p.name)}</b><small>${new Date(p.updated).toLocaleString('pl-PL', {dateStyle: 'short', timeStyle: 'short'})}</small></div>
+      <div class="acts"><button class="btn" data-load="${p.id}">Wczytaj</button><button class="btn danger" data-delp="${p.id}">Usuń</button></div>
+    </div>`).join('') : `<div class="empty">Nie masz jeszcze zapisanych kart.</div>`;
+}
+$('#projList').addEventListener('click', e => {
+  const l = e.target.closest('[data-load]'), d = e.target.closest('[data-delp]');
+  if (l) loadProject(l.dataset.load); else if (d) deleteProject(d.dataset.delp);
+});
+$('#saveBtn').addEventListener('click', () => saveProject(false));
+$('#saveNewBtn').addEventListener('click', () => saveProject(true));
+$('#projName').addEventListener('input', e => { state.name = e.target.value; renderTitle(); commitSoon(); });
+$('#newBtn').addEventListener('click', () => {
+  if (!confirm('Zacząć nową kartę? Niezapisane zmiany w bieżącej przepadną.')) return;
+  state = newState(); buildPreset(state, PRESETS[1]); projectId = null; sel = null;
+  resetHistory(); refreshAll(); autosave(); setTab('tpl');
+});
+$('#backupBtn').addEventListener('click', () => {
+  const idx = readIndex(), projects = {};
+  idx.forEach(p => { try { projects[p.id] = JSON.parse(localStorage.getItem('cm.p.' + p.id)); } catch (_) {} });
+  const blob = new Blob([JSON.stringify({app: 'card-maker', v: 1, index: idx, projects, current: {state, assets: usedAssets(state)}})], {type: 'application/json'});
+  downloadBlob(blob, 'karty-backup-' + new Date().toISOString().slice(0, 10) + '.json');
+});
+$('#importFile').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  try {
+    const d = JSON.parse(await f.text());
+    if (d.app !== 'card-maker') throw 0;
+    const idx = readIndex(); let n = 0;
+    for (const p of d.index || []) {
+      if (!d.projects[p.id]) continue;
+      localStorage.setItem('cm.p.' + p.id, JSON.stringify(d.projects[p.id]));
+      const i = idx.findIndex(x => x.id === p.id); if (i >= 0) idx.splice(i, 1);
+      idx.push(p); n++;
+    }
+    idx.sort((a, b) => b.updated - a.updated);
+    localStorage.setItem(IDX, JSON.stringify(idx));
+    renderProjects(); toast(`Zaimportowano ${n} kart`);
+  } catch (err) { toast('Niepoprawny plik kopii albo brak miejsca'); }
+});
+
+function normalize(st) {
+  const d = newState();
+  st = Object.assign(d, st || {});
+  st.bg = Object.assign(newState().bg, st.bg || {});
+  st.quick = Object.assign(newState().quick, st.quick || {});
+  st.els = Array.isArray(st.els) ? st.els : [];
+  return st;
+}
+
+// ---------------- export ----------------
+let expDpi = 600, expBlob = null, expUrl = null, expToken = 0;
+const fileName = () => ((state.name || 'karta').replace(/[^\p{L}\p{N}\-_ ]/gu, '').trim().replace(/\s+/g, '-') || 'karta') + '.png';
+async function buildExport() {
+  const tok = ++expToken;
+  const s = expDpi / 254, w = Math.round(W * s), h = Math.round(H * s);
+  $('#expInfo').textContent = `${w} × ${h} px · 85,6 × 54 mm`;
+  $('#dlBtn').disabled = $('#shareBtn').disabled = true;
+  if (document.fonts) {
+    await Promise.all(state.els.filter(e => e.type === 'text' && e.font !== 'system').map(e => document.fonts.load(fontStr(e, 40)).catch(() => {})));
+    await Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 2000))]);
+  }
+  await Promise.all([state.bg.image, ...state.els.map(e => e.asset)].map(imgReady));
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  renderCard(c.getContext('2d'), s, {rounded: $('#expRound').checked});
+  const blob = await new Promise(r => c.toBlob(r, 'image/png'));
+  c.width = c.height = 0;
+  if (tok !== expToken) return;
+  expBlob = blob;
+  if (expUrl) URL.revokeObjectURL(expUrl);
+  expUrl = URL.createObjectURL(blob);
+  $('#expImg').src = expUrl;
+  $('#dlBtn').disabled = $('#shareBtn').disabled = false;
+}
+function canShareFiles() {
+  try { return !!(navigator.canShare && navigator.canShare({files: [new File([new Blob(['x'])], 'x.png', {type: 'image/png'})]})); } catch (_) { return false; }
+}
+function downloadBlob(blob, name) {
+  const a = document.createElement('a'); const u = URL.createObjectURL(blob);
+  a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(u), 4000);
+}
+$('#exportBtn').addEventListener('click', () => {
+  select(null);
+  $('#expRound').checked = state.rounded;
+  $$('#dpiSeg button').forEach(b => b.classList.toggle('on', +b.dataset.dpi === expDpi));
+  $('#shareBtn').hidden = !canShareFiles();
+  $('#expModal').hidden = false;
+  buildExport();
+});
+$('#dpiSeg').addEventListener('click', e => {
+  const b = e.target.closest('[data-dpi]'); if (!b) return;
+  expDpi = +b.dataset.dpi; $$('#dpiSeg button').forEach(x => x.classList.toggle('on', x === b)); buildExport();
+});
+$('#expRound').addEventListener('change', buildExport);
+$('#dlBtn').addEventListener('click', () => { if (expBlob) downloadBlob(expBlob, fileName()); });
+$('#shareBtn').addEventListener('click', async () => {
+  if (!expBlob) return;
+  try { await navigator.share({files: [new File([expBlob], fileName(), {type: 'image/png'})], title: state.name}); }
+  catch (e) { if (e.name !== 'AbortError') downloadBlob(expBlob, fileName()); }
+});
+$('#expClose').addEventListener('click', () => { $('#expModal').hidden = true; });
+$('#expModal').addEventListener('click', e => { if (e.target.id === 'expModal') $('#expModal').hidden = true; });
+
+// ---------------- misc ----------------
+let toastT;
+function toast(msg) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('on');
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), 2600);
+}
+function renderTitle() { $('#projTitle').textContent = state.name || 'Card Maker'; }
+function refreshAll() {
+  render(); renderProps(); renderLayers(); renderBg(); renderQuick(); renderTitle();
+  if (tab === 'proj') renderProjects();
+}
+$('#undoBtn').addEventListener('click', undo);
+$('#redoBtn').addEventListener('click', redo);
+
+// ---------------- boot ----------------
+makeSampleLogo();
+buildPresetGrid();
+try {
+  const w = JSON.parse(localStorage.getItem('cm.work'));
+  if (w && w.state) { Object.assign(assets, w.assets || {}); state = normalize(w.state); projectId = w.projectId || null; }
+  else buildPreset(state, PRESETS[1]);
+} catch (_) { buildPreset(state, PRESETS[1]); }
+resetHistory();
+refreshAll();
+fitCanvas();
+getImg(sampleLogo, renderPresetThumbs);
+requestAnimationFrame(renderPresetThumbs);
+window.addEventListener('resize', debounce(renderPresetThumbs, 200));
+})();
+</script>
+</body>
+</html>
